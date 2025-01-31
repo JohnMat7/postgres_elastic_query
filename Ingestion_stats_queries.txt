@@ -1,0 +1,107 @@
+POSTGRES PULL COUNT
+
+SELECT DATE(batch_starttime) AS pulled_date, 
+                   source, 
+                   SUM(docs_count) AS total_docs 
+            FROM data_migration_db.keyword_migration_13_feb 
+            WHERE batch_starttime BETWEEN '2024-11-01' AND '2025-01-01' 
+            GROUP BY pulled_date, source 
+            ORDER BY pulled_date , source
+ 
+
+ELASTIC INGESTION COUNT
+
+
+GET processed_migration_new_schema/_search
+{
+  "size": 0, 
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "aimltimestamp.keyword": {
+              "gte": 1732188200000
+              
+            }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "docs_per_day": {
+      "date_histogram": {
+        "calendar_interval": "day",
+        "script": {
+          "source": "def millis = Long.parseLong(doc['aimltimestamp.keyword'].value); return millis;",
+          "lang": "painless"
+        }
+      },
+            "aggs": {
+                "Keywords": {
+                    "terms": {
+                        "field": "articleSource.keyword",
+                        "size": 10000
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+ELASTIC RELEVANT COUNT (Need Discussion with Pradynesh)
+
+GET processed_migration_new_schema/_search
+{
+  "size": 0, 
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "term": {
+            "articleClassification.keyword": "General"
+          }
+        },
+        {
+          "term": {
+             
+            "articleClassification_.keyword": "General"
+            
+          }
+        }
+      ], 
+      "filter": [
+        {
+          "range": {
+            "aimltimestamp.keyword": {
+              "gte": 1732188200000
+              
+            }
+          }
+        }
+      ]
+    }
+  },
+  "aggs": {
+    "docs_per_day": {
+      "date_histogram": {
+        "calendar_interval": "day",
+        "script": {
+          "source": "def millis = Long.parseLong(doc['aimltimestamp.keyword'].value); return millis;",
+          "lang": "painless"
+        }
+      },
+            "aggs": {
+                "Keywords": {
+                    "terms": {
+                        "field": "articleSource.keyword",
+                        "size": 10000
+                    }
+                }
+            }
+        }
+    }
+}
+
